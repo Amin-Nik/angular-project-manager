@@ -1,0 +1,99 @@
+<header>
+    @if (isEditMode()) {
+    <div class="editMode-container-header">
+        <div class="editMode-container">
+            <button class="editMode-btn accept" (click)="onAccept()">✔</button>
+            <button class="editMode-btn cancel" (click)="onCancel()">✖</button>
+        </div>
+        <button class="header-btns" (click)="isAddColModalOpen.set(true)">➕ Add Columns</button>
+    </div>
+    } @else {
+    <button class="header-btns" (click)="isEditMode.update(v=>!v)">📝 Edit Columns</button>
+    }
+    <button class="header-btns" (click)="isAddTaskModalOpen.set(true)">🎴 Add Task</button>
+</header>
+
+<div cdkDropList cdkDropListOrientation="horizontal" [cdkDropListData]="columns()"
+    (cdkDropListDropped)="dropCol($event)" class="container">
+
+    @for (col of columns(); track col.id) {
+
+    <section cdkDrag [cdkDragDisabled]="!isEditMode()" class="col">
+        <div class="col-header">
+            @if (isEditMode()) {
+            <button class="col-remove-btn" (click)="removeColId.set(col.id); isAreYouSureModalOpen.set(true)">❌</button>
+            <span cdkDragHandle class="drag-handle">⠿</span>
+            <div>
+                <input [value]="col.title" (input)="onInput($event.target.value,col.id)" class="col-title-input"
+                    type="text" name="colTitle" id="colTitle">
+            </div>
+            } @else {
+            <h3 class="col-title">{{col.title}}</h3>
+            }
+        </div>
+
+        <div class="col-body" [id]="'tasks-' + col.id" [cdkDropListConnectedTo]="columns().map(c => 'tasks-' + c.id)"
+            cdkDropList [cdkDropListData]="col.tasks" (cdkDropListDropped)="dropTask($event)">
+            @for (task of col.tasks; track task.id) {
+            <div cdkDrag [cdkDragDisabled]="isEditMode()" class="card" (click)="openEditTaskModal(col.id,task.id)">
+                <div>
+                    <h4 class="card-title">{{task.title}}</h4>
+                    <span [class]="`priority ${task.priority.toLocaleLowerCase()}`">{{task.priority}}</span>
+                </div>
+                <div>
+                    <p class="description">{{task.description}}</p>
+                    <span class="label">{{task.label}}</span>
+                </div>
+                <div>
+                    <span class="duration">🕘{{task.duration}}</span>
+                    <span class="assignTo">🙋‍♂️{{task.assignTo}}</span>
+                </div>
+            </div>
+            }
+        </div>
+    </section>
+    }
+</div>
+
+
+@if (isAddColModalOpen()) {
+<div class="add-col-modal">
+    <form class="form-container" [formGroup]="theForm" (ngSubmit)="addColumn()" action="#" method="post">
+        <div class="form-group">
+            <label for="title">please enter column name</label>
+            <input formControlName="title" type="text" id="title" name="title" placeholder="column title" required>
+            <button class="add-col-submit-btn" type="submit" [disabled]="!theForm.valid">Submit</button>
+            @if (theForm.controls.title.invalid &&
+            theForm.controls.title.touched) {
+            @if (theForm.controls.title.hasError('required')) {
+            <p class="error-message">title is required</p>
+            }
+            }
+            <button class="add-col-close-btn" type="reset" (click)="isAddColModalOpen.set(false)">❌</button>
+        </div>
+    </form>
+</div>
+}
+
+
+@if (isAddTaskModalOpen()) {
+<app-form [editModeData]="null" (closeModal)="isAddTaskModalOpen.set($event)" (formData)="addTask($event)" />
+}
+@if (isEditTaskModalOpen()) {
+<app-form [editModeData]="editTaskData" (deleteTask)="isAreYouSureModalOpen.set(true)"
+    (closeModal)="isEditTaskModalOpen.set($event)" (formData)="editTask($event)" />
+}
+
+@if (isAreYouSureModalOpen()) {
+<div class="add-col-modal">
+    <div class="form-container">
+        <div class="delete-modal">
+            <h2>Are You Sure?</h2>
+            <div>
+                <button class="cancel-btn" (click)="isAreYouSureModalOpen.set(false)">Cancel</button>
+                <button class="confirm-btn" (click)="DeleteModal()">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+}

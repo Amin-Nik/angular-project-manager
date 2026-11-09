@@ -1,0 +1,40 @@
+<div class="modal">
+    <form [formGroup]="logInForm" (ngSubmit)="onSubmit()" action="#" method="post">
+        <div class="form-container">
+            <h2>Welcome Back</h2>
+            <div class="inputs-container">
+
+                <div class="form-group">
+                    <label for="userName">User Name</label>
+                    <input formControlName="userName" type="text" id="userName" name="userName" placeholder="UserName"
+                        required>
+                    @if (logInForm.controls.userName.invalid &&
+                    logInForm.controls.userName.touched) {
+
+                    @if (logInForm.controls.userName.hasError('required')) {
+                    <p class="error-message">username is required</p>
+                    }
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input formControlName="password" type="text" id="password" name="password" placeholder="Password"
+                        required>
+                    @if (logInForm.controls.password.invalid &&
+                    logInForm.controls.password.touched) {
+
+                    @if (logInForm.controls.password.hasError('required')) {
+                    <p class="error-message">password is required</p>
+                    }
+                    }
+                </div>
+
+            </div>
+            <button type="submit" class="login-btn" [disabled]="!logInForm.valid">Log In</button>
+            @if (loginError()) {
+            <p class="error-message">Username or Password is wrong</p>
+            }
+        </div>
+    </form>
+</div>
