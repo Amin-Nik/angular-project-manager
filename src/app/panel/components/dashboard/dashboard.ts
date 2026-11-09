@@ -1,8 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, OnDestroy } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Column, Task } from '../../../models/Task-model';
-import { colsData } from '../../../data/mockData';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { BoardService } from '../../../services/board';
 
 type ColumnsTitle = Omit<Column, 'tasks'>;
 type TaskFormData = Omit<Task, 'id'>;
@@ -13,8 +13,9 @@ type TaskFormData = Omit<Task, 'id'>;
   styleUrl: './dashboard.css',
   templateUrl: './dashboard.html',
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
   fb = inject(FormBuilder);
+  boardService = inject(BoardService);
   isEditMode = signal(false);
   isAddColModalOpen = signal(false);
   isAddTaskModalOpen = signal(false);
@@ -23,15 +24,39 @@ export class Dashboard implements OnInit {
   addNewColumnInput = signal('');
   editTaskData: Task | null = null;
   removeColId = signal<string>('');
-  columns = signal<Column[]>(colsData);
+  columns = signal<Column[]>([]);
   previousColumnsTitle: ColumnsTitle[] = [];
+
+  private unsubscribe?: () => void;
 
   theForm = this.fb.group({
     title: ['', [Validators.required]],
   });
 
+  getRandomId(): string {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+
+    // تعیین نسخه UUID روی 4
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+
+    // تعیین variant استاندارد UUID
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
+
+    return [
+      hex.slice(0, 4).join(''),
+      hex.slice(4, 6).join(''),
+      hex.slice(6, 8).join(''),
+      hex.slice(8, 10).join(''),
+      hex.slice(10, 16).join(''),
+    ].join('-');
+  }
+
   ngOnInit() {
-    this.previousColumnsTitle = colsData.map(({ id, title }) => ({ id, title }));
+    this.unsubscribe = this.boardService.listenToColumns((columns) => {
+      this.columns.set(columns);
+    });
   }
 
   onInput(title: string, id: string) {
@@ -43,6 +68,7 @@ export class Dashboard implements OnInit {
   onAccept() {
     this.previousColumnsTitle = this.columns().map(({ id, title }) => ({ id, title }));
     this.isEditMode.set(false);
+    this.saveToFirebase();
   }
 
   onCancel() {
@@ -62,6 +88,7 @@ export class Dashboard implements OnInit {
       const tempCol = [...this.columns()];
       tempCol.splice(removeColIndex, 1);
       this.columns.set(tempCol);
+      this.saveToFirebase();
     } else {
       alert("you can't delete columns with task cards");
     }
@@ -69,16 +96,19 @@ export class Dashboard implements OnInit {
   }
 
   addColumn() {
+    const random = this.getRandomId();
     this.columns.update((current) => [
       ...current,
-      { id: crypto.randomUUID(), title: this.theForm.value.title!, tasks: [] },
+      { id: random, title: this.theForm.value.title!, tasks: [] },
     ]);
     this.isAddColModalOpen.set(false);
     this.theForm.reset();
+    this.saveToFirebase();
   }
 
   addTask(task: TaskFormData) {
-    const newTask = { id: crypto.randomUUID(), ...task };
+    const random = this.getRandomId();
+    const newTask = { id: random, ...task };
     this.columns.update(([firstCol, ...restCol]) => [
       {
         ...firstCol,
@@ -87,6 +117,7 @@ export class Dashboard implements OnInit {
       ...restCol,
     ]);
     this.isAddTaskModalOpen.set(false);
+    this.saveToFirebase();
   }
 
   openEditTaskModal(colId: string, taskId: string) {
@@ -109,6 +140,7 @@ export class Dashboard implements OnInit {
         }),
       );
       this.isEditTaskModalOpen.set(false);
+      this.saveToFirebase();
     }
   }
 
@@ -126,6 +158,7 @@ export class Dashboard implements OnInit {
       );
       this.isEditTaskModalOpen.set(false);
       this.isAreYouSureModalOpen.set(false);
+      this.saveToFirebase();
     }
   }
 
@@ -148,6 +181,7 @@ export class Dashboard implements OnInit {
       transferArrayItem(currentContainer, moveToContainer, currentIndex, moveToIndex);
     }
     this.columns.update((columns) => [...columns]);
+    this.saveToFirebase();
   }
 
   dropCol(event: CdkDragDrop<Column[]>) {
@@ -157,5 +191,18 @@ export class Dashboard implements OnInit {
     const moveToIndex = event.currentIndex;
     moveItemInArray(currentContainer, currentIndex, moveToIndex);
     this.columns.update((columns) => [...columns]);
+    this.saveToFirebase();
+  }
+
+  ngOnDestroy() {
+    this.unsubscribe?.();
+  }
+
+  // fireBase code
+
+  saveToFirebase() {
+    this.boardService.saveColumns(this.columns()).catch((error) => {
+      console.error('Firebase save error:', error);
+    });
   }
 }
