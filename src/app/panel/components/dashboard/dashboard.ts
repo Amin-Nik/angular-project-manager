@@ -36,10 +36,8 @@ export class Dashboard implements OnInit, OnDestroy {
   getRandomId(): string {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
 
-    // تعیین نسخه UUID روی 4
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
 
-    // تعیین variant استاندارد UUID
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
     const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
@@ -197,8 +195,6 @@ export class Dashboard implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.unsubscribe?.();
   }
-
-  // fireBase code
 
   saveToFirebase() {
     this.boardService.saveColumns(this.columns()).catch((error) => {

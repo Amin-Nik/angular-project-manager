@@ -8,7 +8,6 @@ import { Column } from '../models/Task-model';
 export class BoardService {
   private db = inject(Database);
 
-  // دریافت تغییرات از Firebase
   listenToColumns(callback: (columns: Column[]) => void) {
     const columnsRef = ref(this.db, 'project/columns');
 
@@ -26,7 +25,6 @@ export class BoardService {
     });
   }
 
-  // ذخیره ستون‌ها در Firebase
   saveColumns(columns: Column[]) {
     const columnsRef = ref(this.db, 'project/columns');
 
